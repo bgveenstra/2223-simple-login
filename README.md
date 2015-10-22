@@ -6,7 +6,7 @@
 | :--- |
 | Implement a password **authentication** strategy with bcrypt |
 | Saved a logged-in user's data to the session |
-| Implement routes for a user to `/login` and `/logout` |
+| Implement routes for a user to login and logout |
 
 ## Authentication & Authorization
 
@@ -363,12 +363,12 @@ To give users the ability to sign up and log in to our site, we'll need:
   </html>
   ```
   
-1. Create a `GET` `/login` route on your server that renders the login view.
+1. Create a `GET /login` route on your server that renders the login view.
 
-1. Add an "on submit" listener in your `scripts.js` file for the login form. When the login form is submitted, use `$.ajax` or `$.post` to send a request to a `/login` path with the user's login data.  As with signup, you can use `serialize()` to package and format the login data to send to the server.
+1. Add an "on submit" listener in your `scripts.js` file for the login form. When the login form is submitted, use `$.ajax` or `$.post` to send a request to a `/sessions` path with the user's login data.  As with signup, you can use `serialize()` to package and format the login data to send to the server.  We aren't storing our session data in the database, but we're using this route because the mechanics of logging in will require us to update the session.
 
   
-1. We already have a `POST` `/login` route set up in the server, and it has the form data -- but it just sends back a message right now. To log a user in, we'll need to do more than that:
+1. We already have a `POST /sessions` route set up in the server, and it has the form data -- but it just sends back a message right now. To log a user in, we'll need to do more than that:
 
     * look the user up in the database with the email from the form
     * if a user is found, compare that user's passwordDigest with the password from the form
@@ -392,39 +392,39 @@ To give users the ability to sign up and log in to our site, we'll need:
   
 1. Add another method that does full authentication based on an email and a password. It will also take a callback, so when our server uses the `authenticate` method, the server code can specifiy what should happen next. This method will be called from the `User` model, since it will be looking up a user instance, not starting with one. It has to be added on `UserSchema.statics`.
 
-  ```js
-  
-  // models/user.js
-  
-  // authenticate user (when user logs in)
-  UserSchema.statics.authenticate = function (email, password, callback) {
-    // find user by email entered at log in
-    this.findOne({email: email}, function (err, foundUser) {
-      console.log(foundUser);
+   ```js
+   
+   // models/user.js
+   
+   // authenticate user (when user logs in)
+   UserSchema.statics.authenticate = function (email, password, callback) {
+     // find user by email entered at log in
+     this.findOne({email: email}, function (err, foundUser) {
+       console.log(foundUser);
+ 
+       // throw error if can't find user
+       if (!foundUser) {
+         console.log('No user with email ' + email);
+         callback("Error: no user found", null);  // better error structures are available, but a string is good enough for now
+       // if we found a user, check if password is correct
+       } else if (foundUser.checkPassword(password)) {
+         callback(null, foundUser);
+       } else {
+         callback("Error: incorrect password", null);
+       }
+     });
+   };
+ 
+ ```
 
-      // throw error if can't find user
-      if (!foundUser) {
-        console.log('No user with email ' + email);
-        callback("Error: no user found", null);  // better error structures are available, but a string is good enough for now
-      // if we found a user, check if password is correct
-      } else if (foundUser.checkPassword(password)) {
-        callback(null, foundUser);
-      } else {
-        callback("Error: incorrect password", null);
-      }
-    });
-  };
 
-```
-
-
-1. In `server.js`, update your `POST /login` route to authenticate a user.
+1. In `server.js`, update your `POST /sessions` route to authenticate a user.
 
   ```js
   // server.js
 
   // authenticate the user 
-  app.post('/login', function (req, res) {
+  app.post('/sessions', function (req, res) {
     // call authenticate function to check if password user entered is correct
     User.authenticate(req.body.email, req.body.password, function (err, user) {
       res.json(user);
@@ -459,7 +459,7 @@ To give users the ability to sign up and log in to our site, we'll need:
   }));
   ```
 
-1. Now that the session is defined, let's start keeping data in a session when someone signs up or logs in by setting `req.session.userId` to the user's id. This would go just before the `res` line of your `POST /login` route.
+1. Now that the session is defined, let's start keeping data in a session when someone signs up or logs in by setting `req.session.userId` to the user's id. This would go just before the `res` line of your `POST /sessions` route.
 
   ```js
       req.session.userId = user._id;
@@ -511,7 +511,7 @@ To give users the ability to sign up and log in to our site, we'll need:
   });
   ```
 
-1. Modify the `POST` `/login` route to redirect to the user's profile page using `res.redirect('/profile');` instead of its current response.
+1. Modify the `POST /sessions` route to redirect to the user's profile page using `res.redirect('/profile');` instead of its current response.
 
 
 1. We don't want new users to get a JSON or message response when they sign up, either. In fact, we probably want to log them in automatically. Modify the `POST` `/users` route to save a new user's id in the session and then redirect to the profile.
