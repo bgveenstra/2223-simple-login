@@ -5,7 +5,7 @@
 | Objectives |
 | :--- |
 | Implement a password **authentication** strategy with bcrypt |
-| Saved a logged-in user's data to the session |
+| Save a logged-in user's data to the session |
 | Implement routes for a user to login and logout |
 
 ## Authentication & Authorization
