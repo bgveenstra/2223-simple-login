@@ -177,7 +177,7 @@ To give users the ability to sign up and log in to our site, we'll need:
 
 1. We've already told Express to serve a public folder with `app.use(express.static('/public'))`, so make a `public` folder and inside make a `scripts.js` file. Then link it with a `<script>` tag in your `signup.ejs`. Log something to the console to make sure they're connected.
 
-1. Set a submit listener on your signup form and use `$.post()` or `$.ajax()` to post the form data to `POST /signup`. (Consider using the `serialize()` method to quickly make a data string to send to the server. The serialized string will represent a data object: its keys will match the "name" attributes of your html form's inputs, and the each value in the object will be the value of the input field.)  Since the form is a DOM element, wrap your 
+1. Set a submit listener on your signup form and use `$.post()` or `$.ajax()` to post the form data to `POST /signup`. (Consider using the `serialize()` method to quickly make a data string to send to the server. The serialized string will represent a data object: its keys will match the "name" attributes of your html form's inputs, and the each value in the object will be the value of the input field.)  Since the form is a DOM element, wrap your request in `$(document).ready(function(){ ... });`
 
   ```js
   
@@ -231,17 +231,19 @@ To give users the ability to sign up and log in to our site, we'll need:
 
   // require dependencies
   var mongoose = require('mongoose'),
-    Schema = mongoose.Schema,
     bcrypt = require('bcrypt');
+
+  // set up shorthand method name
+  var Schema = mongoose.Schema;
   ```
 
-4. Also in `user.js`, write your `UserSchema`. For our simple example, users should have the properties **email** and **passwordDigest**.
+4. Also in `user.js`, write your `userSchema`. For our simple example, users should have the properties **email** and **passwordDigest**.
 
   ```js
   // user.js
 
   // define user schema
-  var UserSchema = new Schema({
+  var userSchema = new Schema({
     email: String,
     passwordDigest: String
   });
@@ -249,13 +251,13 @@ To give users the ability to sign up and log in to our site, we'll need:
 
 5. Continuing in `user.js`, define a new, more secure create method for our `User` model that stores a hashed and salted version of the user's password instead of their exact password. 
 
-   **Note:** We use `UserSchema.statics` to define <a href="http://mongoosejs.com/docs/guide#statics" target="_blank">static methods</a> for our schema, ones that we'll call from the model (like `User.createSecure`).  The other option, `UserSchema.methods`, defines <a href="http://mongoosejs.com/docs/guide#methods" target="_blank">instance methods</a> for our schema, which we could call from an individual instance of a user (like `princessPeach.checkPassword`). Static methods can hold any functionality related to the collection, while instance methods define functionality related to individual documents in the collection. You can think of instance methods like prototype methods in OOP!
+   **Note:** We use `userSchema.statics` to define <a href="http://mongoosejs.com/docs/guide#statics" target="_blank">static methods</a> for our schema, ones that we'll call from the model (like `User.createSecure`).  The other option, `userSchema.methods`, defines <a href="http://mongoosejs.com/docs/guide#methods" target="_blank">instance methods</a> for our schema, which we could call from an individual instance of a user (like `princessPeach.checkPassword`). Static methods can hold any functionality related to the collection, while instance methods define functionality related to individual documents in the collection. You can think of instance methods like prototype methods in OOP!
 
   ```js
   // user.js
 
   // create a new user with secure (hashed) password
-  UserSchema.statics.createSecure = function (email, password, callback) {
+  userSchema.statics.createSecure = function (email, password, callback) {
     // `this` references our schema
     // store it in variable `user` because `this` changes context in nested callbacks
 
@@ -278,13 +280,13 @@ To give users the ability to sign up and log in to our site, we'll need:
   
   **NOTE:** `bcrypt`'s `genSalt` or `genSaltSync` function provides the salt we'll use to randomize the hashing algorithm. The `Sync` at the end of the second method name says we want it to run synchronously. It will complete before the code moves on, so we don't need to give it a callback to say what to do when it finishes.
 
-6. Continuing in `user.js`, define a `User` model using your `UserSchema` and export the model (so we can require it in other parts of our application).
+6. Continuing in `user.js`, define a `User` model using your `userSchema` and export the model (so we can require it in other parts of our application).
 
   ```js
   // user.js
 
   // define user model
-  var User = mongoose.model('User', UserSchema);
+  var User = mongoose.model('User', userSchema);
 
   // export user model
   module.exports = User;
@@ -377,27 +379,27 @@ To give users the ability to sign up and log in to our site, we'll need:
     
     We'll split these tasks between the main server code and the user schema.
   
-1. Add a method to the user schema that checks whether a plain text password (like from a form) "matches" the passwordDigest stored in a specific user's database document. It will need to use bcrypt to `compare` or `compareSync` (synchronously compare) the two forms of the password.   We'll call this method once we have a specific user from the database, so put it on `UserSchema.methods`.
+1. Add a method to the user schema that checks whether a plain text password (like from a form) "matches" the passwordDigest stored in a specific user's database document. It will need to use bcrypt to `compare` or `compareSync` (synchronously compare) the two forms of the password.   We'll call this method once we have a specific user from the database, so put it on `userSchema.methods`.
 
   ```js
   // models/user.js
   
   // compare password user enters with hashed password (`passwordDigest`)
-  UserSchema.methods.checkPassword = function (password) {
+  userSchema.methods.checkPassword = function (password) {
     // run hashing algorithm (with salt) on password user enters in order to compare with `passwordDigest`
     return bcrypt.compareSync(password, this.passwordDigest);
   };
   
   ```
   
-1. Add another method that does full authentication based on an email and a password. It will also take a callback, so when our server uses the `authenticate` method, the server code can specifiy what should happen next. This method will be called from the `User` model, since it will be looking up a user instance, not starting with one. It has to be added on `UserSchema.statics`.
+1. Add another method that does full authentication based on an email and a password. It will also take a callback, so when our server uses the `authenticate` method, the server code can specifiy what should happen next. This method will be called from the `User` model, since it will be looking up a user instance, not starting with one. It has to be added on `userSchema.statics`.
 
    ```js
    
    // models/user.js
    
    // authenticate user (when user logs in)
-   UserSchema.statics.authenticate = function (email, password, callback) {
+   userSchema.statics.authenticate = function (email, password, callback) {
      // find user by email entered at log in
      this.findOne({email: email}, function (err, foundUser) {
        console.log(foundUser);
@@ -511,14 +513,20 @@ To give users the ability to sign up and log in to our site, we'll need:
   });
   ```
 
-1. Modify the `POST /sessions` route to redirect to the user's profile page using `res.redirect('/profile');` instead of its current response.
+1. Modify the `POST /sessions` route to redirect to the user's profile page using `res.redirect('/profile');` instead of its current response. 
+
+1. Test the effect of your modification in the browser. What do you see on the page and in the console?
+
+1. It turns out AJAX doesn't play well with redirects. They're changing your browser in two fundamentally different ways. The AJAX requests we've been making in our client-side JavaScript were helpful for debugging as we set everything up, but now that we want to redirect, we need to move back to non-AJAX requests.
+
+1. Update your `login.ejs` so that the form has a `method` and `action`. Remove the AJAX call for the login form from your scripts.js.  Test your login form again.
 
 
-1. We don't want new users to get a JSON or message response when they sign up, either. In fact, we probably want to log them in automatically. Modify the `POST` `/users` route to save a new user's id in the session and then redirect to the profile.
+1. We don't want new users to get a JSON or message response when they sign up, either. In fact, we probably want to log them in automatically. Modify the `POST /users` route to save a new user's id in the session and then redirect to the profile. Also modify your signup form to use `method` and `action`.
 
 ## 7. Enable log out
 
-1. On the profile view, add a logout button.
+1. On the profile view, add a logout link.
 
 
 ```html
@@ -526,13 +534,21 @@ To give users the ability to sign up and log in to our site, we'll need:
 <h1>Profile</h1>
 <hr>
 <h2>Welcome! You're logged in as <%= user.email %>.</h2>
-<button id="logout" type="button" class="btn btn-default">Log Out</button>
+<a id="logout" href="/logout" class="btn btn-default">Log Out</a>
 ```
 
-1. In your client-side javascript, add an event listener for a click on the logout button.  When the button is clicked, use `$.ajax` or `$.post` to make a `POST` request to `/logout`. 
+1. Make a `GET /logout` route on your server that logs out a user by setting the  `req.session.userId` to `null`, then redirects to the login page.
 
-1. Make a `POST /logout` route on your server that logs out a user by setting the  `req.session.userId` to `null`.
+  ```js
 
+  //server.js
+  app.get('/logout', function (req, res) {
+    // remove the session user id
+    req.session.userId = null;
+    // redirect to login (for now)
+    res.redirect('/login');
+  });
+```
 
 ## Custom Middleware Refactor (Stretch)
 
