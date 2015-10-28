@@ -75,7 +75,7 @@ app.get('/', function(req, res){
 // listen for a connection event
 io.on('connection', function(socket){
   console.log('user connected with socket id ', socket.id);
-  console.log('socket.request.session is ', socket.request.session);
+  console.log('socket.request.session is ', socket.request.sessionId);
   console.log('user id is ', socket.request.session.userId);
   // listen for a custom event type - new chat message
   socket.on('new chat message', function(message){
