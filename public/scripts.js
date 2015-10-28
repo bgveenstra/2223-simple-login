@@ -1,6 +1,39 @@
 console.log('sanity check: client-side js loaded');
 
+var socket = null;
+
 $(document).ready(function() {
+  $('a#connect').on('click', function(e){
+    socket = socket || io();
+    // logging the socket id, but with a delay to give the connection time
+    setTimeout(function(){ console.log(socket.id); }, 500);
+
+    // set up socket to listen for chat messages    
+    socket.on('chat message', function(msg){
+      $('#messages').prepend($('<li>').text(msg));
+    });
+
+  });
+
+
+  $('form#chat').submit(function(e){
+    e.preventDefault();
+    // grab the input field data
+    var newMessage = $('input#message').val();
+    if (socket){
+      // send the chat message as data - socket.io allows json or strings
+      console.log('emitting new chat message');
+      socket.emit('new chat message', newMessage);
+      // clear the input field
+      $('input#message').val('');
+    } else {
+      alert('cannot send - click Connect to establish chat connection')
+    }
+    // another way to prevent default behavior (left here because it's in socket.io docs -- not needed!) @TODO check
+    return false;
+  });
+
+
   // $('#signup-form').on('submit', function(e) {
   //   e.preventDefault();
 

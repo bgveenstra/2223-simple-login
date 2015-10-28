@@ -9,6 +9,18 @@ var express = require('express'),
 // create express app object
 var app = express();
 
+// @SOCKETS
+// require built-in http module and set up an http server with our app
+  // (so we can reuse same server for socket handshake)
+var http = require('http');
+var httpServer = http.Server(app);
+// pull in socket.io module's "Server" constructor
+var ioServer = require('socket.io');
+// create an io server for us to use, and attach it to our http server
+var io = new ioServer(httpServer);
+
+
+
 // connect to database and pull in model(s)
 mongoose.connect('mongodb://localhost/simple-login');
 var User = require('./models/user');
@@ -17,13 +29,69 @@ var User = require('./models/user');
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
-app.use(session({
+
+var sessionMiddleware = session({
   saveUninitialized: true,
   resave: true,
   secret: 'SuperSecretCookie',
   cookie: { maxAge: 30 * 60 * 1000 }
-}));
+});
 
+app.use(sessionMiddleware);
+
+// SHARE MIDDLEWARE SOLUTION
+io.use(function(socket, next){
+  // Wrap the express middleware
+  sessionMiddleware(socket.request, socket.request.res, next);
+});
+
+
+// HAND ROLLED SOLUTION
+// @SOCKET-AUTH -- @TODO required?
+// we'll use sessions/cookies to connect socket server to http server
+// var cookieParser = require('cookie-parser');
+// app.use(cookieParser);
+
+// // @SOCKET-AUTH
+// io.use(function(socket, next) {
+//   console.log('inside io.use for handshake')
+//   var handshakeData = socket.request;
+//   // make sure the handshake data looks good as before
+//   console.log('handshake cookie: ', handshakeData.headers.cookie);
+//   // if error do this:
+//     // next(new Error('not authorized');
+//   // else just call next
+//   next();
+// });
+
+
+// @SOCKETS
+// main page of site
+app.get('/', function(req, res){
+  res.render('index');
+});
+
+// @SOCKETS
+// listen for a connection event
+io.on('connection', function(socket){
+  console.log('user connected with socket id ', socket.id);
+  console.log('socket.request.session is ', socket.request.session);
+  console.log('user id is ', socket.request.session.userId);
+  // listen for a custom event type - new chat message
+  socket.on('new chat message', function(message){
+    console.log('message from '+socket.id + ": " + message);
+    io.emit('chat message', message);
+  });
+
+  // listen for disconnect
+  socket.on('disconnect', function(){
+    console.log('user disconnected with socket id ', socket.id);
+  });
+
+});
+
+
+// ROUTES
 
 // show the signup form
 app.get('/signup', function (req, res) {
@@ -82,7 +150,9 @@ app.get('/logout', function (req, res) {
   res.redirect('/login');
 });
 
-// listen on port 3000
-app.listen(3000, function () {
+//@SOCKETS
+// change to use the httpServer variable to listen
+// listen on port 3000 - @TODO necessary?
+httpServer.listen(3000, function () {
   console.log('server started on locahost:3000');
 });
